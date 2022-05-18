@@ -48,6 +48,7 @@ type Field w h = Grid w h FieldCell
 data CoverCell where
   Covered :: CoverCell
   Uncovered :: CoverCell
+  Flagged :: CoverCell
   deriving (Show, Eq)
 
 type Cover w h = Grid w h CoverCell
@@ -83,7 +84,7 @@ gameWon ::
   KnownBounds w h =>
   Field w h -> Cover w h -> Bool
 gameWon field cover =
-  all (\(fc,cc) -> (fc == Mine) == (cc == Covered)) $
+  all (\(fc,cc) -> (fc == Mine) == (cc /= Uncovered)) $
     liftA2 (,) field cover
 
 -- "Survey" a single field cell: how many mines are in it, zero or one?
@@ -108,6 +109,7 @@ surveyField = fmap (sum . fmap surveyCell) . neighborhoods
 --   " " represents a cell with zero adjacent mines
 --   "n" represents a cell with n adjacent mines (for 0 < n <= 8)
 prettyGameCell :: FieldCell -> SurveyCell -> CoverCell -> Text
+prettyGameCell _ _ Flagged = Text.pack "\x2691"
 prettyGameCell _ _ Covered = Text.pack "#"
 prettyGameCell Mine _ Uncovered = Text.pack "@"
 prettyGameCell NoMine 0 Uncovered = Text.pack " "
@@ -202,6 +204,17 @@ uncoverCell i survey cover =
         , currentCover = cover
         }
 
+flagCell ::
+  forall w h.
+  KnownBounds w h =>
+  Index w h -> Cover w h -> Cover w h
+flagCell i cover = replace i Flagged cover
+
+unflagCell ::
+  forall w h.
+  KnownBounds w h =>
+  Index w h -> Cover w h -> Cover w h
+unflagCell i cover = replace i Covered cover
 
 -- Choose a random element from a set, or return Nothing if the set is empty.
 -- This is helpful in populating a random Field.

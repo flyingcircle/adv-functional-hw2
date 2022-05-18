@@ -105,12 +105,21 @@ selectCell ::
   AppState w h -> EventM Void (Next (AppState w h))
 selectCell field survey st =
   let st' = case index (cover st) (focus st) of
-              Uncovered -> st
               Covered -> st { cover = uncoverCell (focus st) survey (cover st) }
+              _ -> st
   in if gameLost field (cover st') || gameWon field (cover st') then
       halt st'
     else
       continue $ st'
+
+placeFlag ::
+  KnownBounds w h =>
+  AppState w h -> AppState w h
+placeFlag st = case index (cover st) (focus st) of
+  Uncovered -> st
+  Covered -> st { cover = flagCell (focus st) (cover st) }
+  Flagged -> st { cover = unflagCell (focus st) (cover st)}
+
 -- Handle a BrickEvent, which represents a user input or some other change in
 -- the terminal state outside our application. Brick gives us two relevant
 -- commands in the EventM monad:
@@ -135,6 +144,7 @@ handleEvent field survey st event =
         KDown -> continue $ st { focus = down (focus st) }
         KEsc -> halt st
         KEnter -> selectCell field survey st
+        KChar ' ' -> continue $ placeFlag st 
         _ -> continue st
     -- We don't care about any other kind of events, at least in this version
     -- of the code.
